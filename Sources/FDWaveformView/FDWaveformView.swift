@@ -3,7 +3,6 @@
 //
 import UIKit
 import MediaPlayer
-import AVFoundation
 import Accelerate
 
 // FROM http://stackoverflow.com/questions/5032775/drawing-waveform-with-avassetreader
@@ -87,12 +86,12 @@ open class FDWaveformView: UIView {
 
     /// Supported waveform types
     //TODO: make this public after reconciling FDWaveformView.WaveformType and FDWaveformType
-    enum WaveformType {
+    public enum WaveformType {
         case linear, logarithmic
     }
 
     // Type of waveform to display
-    var waveformType: WaveformType = .logarithmic {
+    public var waveformType: WaveformType = .logarithmic {
         didSet {
             setNeedsDisplay()
             setNeedsLayout()
@@ -148,7 +147,7 @@ open class FDWaveformView: UIView {
     private var renderForCurrentAssetFailed = false
 
     /// Current audio context to be used for rendering
-    private var audioContext: FDAudioContext? {
+    public var audioContext: FDAudioContextProtocol? {
         didSet {
             waveformImage = nil
             zoomSamples = 0 ..< self.totalSamples
@@ -442,7 +441,7 @@ open class FDWaveformView: UIView {
 }
 
 //TODO: make this public after reconciling FDWaveformView.WaveformType and FDWaveformType
-enum FDWaveformType: Equatable {
+public enum FDWaveformType: Equatable {
     /// Waveform is rendered using a linear scale
     case linear
 

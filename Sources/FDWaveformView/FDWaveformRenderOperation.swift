@@ -2,12 +2,11 @@
 // Copyright 2013 - 2017, William Entriken and the FDWaveformView contributors.
 //
 import UIKit
-import AVFoundation
 import Accelerate
 
 /// Format options for FDWaveformRenderOperation
 //MAYBE: Make this public
-struct FDWaveformRenderFormat {
+public struct FDWaveformRenderFormat {
     
     /// The type of waveform to render
     //TODO: make this public after reconciling FDWaveformView.WaveformType and FDWaveformType
@@ -45,7 +44,7 @@ struct FDWaveformRenderFormat {
 final public class FDWaveformRenderOperation: Operation {
     
     /// The audio context used to build the waveform
-    let audioContext: FDAudioContext
+    let audioContext: FDAudioContextProtocol
     
     /// Size of waveform image to render
     public let imageSize: CGSize
@@ -74,7 +73,7 @@ final public class FDWaveformRenderOperation: Operation {
     /// Final rendered image. Used to hold image for completionHandler.
     private var renderedImage: UIImage?
     
-    init(audioContext: FDAudioContext, imageSize: CGSize, sampleRange: CountableRange<Int>? = nil, format: FDWaveformRenderFormat = FDWaveformRenderFormat(), completionHandler: @escaping (_ image: UIImage?) -> ()) {
+    init(audioContext: FDAudioContextProtocol, imageSize: CGSize, sampleRange: CountableRange<Int>? = nil, format: FDWaveformRenderFormat = FDWaveformRenderFormat(), completionHandler: @escaping (_ image: UIImage?) -> ()) {
         self.audioContext = audioContext
         self.imageSize = imageSize
         self.sampleRange = sampleRange ?? 0..<audioContext.totalSamples
@@ -148,95 +147,31 @@ final public class FDWaveformRenderOperation: Operation {
         guard
             !slice.isEmpty,
             targetSamples > 0,
-            let reader = try? AVAssetReader(asset: audioContext.asset)
-            else { return nil }
-        
-        var channelCount = 1
-        var sampleRate: CMTimeScale = 44100
-        let formatDescriptions = audioContext.assetTrack.formatDescriptions as! [CMAudioFormatDescription]
-        for item in formatDescriptions {
-            guard let fmtDesc = CMAudioFormatDescriptionGetStreamBasicDescription(item) else { return nil }
-            channelCount = Int(fmtDesc.pointee.mChannelsPerFrame)
-            sampleRate = Int32(fmtDesc.pointee.mSampleRate)
+            let reader = try? audioContext.getReader(slice: slice, targetSamples: targetSamples, format: format)
+        else {
+            return nil
         }
-        
-        reader.timeRange = CMTimeRange(start: CMTime(value: Int64(slice.lowerBound), timescale: sampleRate),
-                                       duration: CMTime(value: Int64(slice.count), timescale: sampleRate))
-        let outputSettingsDict: [String : Any] = [
-            AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsNonInterleaved: false
-        ]
-        
-        let readerOutput = AVAssetReaderTrackOutput(track: audioContext.assetTrack, outputSettings: outputSettingsDict)
-        readerOutput.alwaysCopiesSampleData = false
-        reader.add(readerOutput)
-        
-        var sampleMax = format.type.floorValue
-        let samplesPerPixel = max(1, channelCount * slice.count / targetSamples)
-        let filter = [Float](repeating: 1.0 / Float(samplesPerPixel), count: samplesPerPixel)
         
         var outputSamples = [CGFloat]()
         var sampleBuffer = Data()
-        
-        // 16-bit samples
-        reader.startReading()
-        defer { reader.cancelReading() } // Cancel reading if we exit early or if operation is cancelled
-        
-        while reader.status == .reading {
+        var sampleMax: CGFloat = reader.sampleMax
+        let samplesPerPixel = reader.samplesPerPixel
+
+        while let result = reader.readNextBatch(sampleBuffer: &sampleBuffer) {
             guard !isCancelled else { return nil }
-            
-            guard let readSampleBuffer = readerOutput.copyNextSampleBuffer(),
-                let readBuffer = CMSampleBufferGetDataBuffer(readSampleBuffer) else {
-                    break
+
+            if result.samplesToProcess > 0 {
+                processSamples(fromData: &sampleBuffer,
+                               sampleMax: &sampleMax,
+                               outputSamples: &outputSamples,
+                               samplesToProcess: result.samplesToProcess,
+                               downSampledLength: result.downSampledLength,
+                               samplesPerPixel: samplesPerPixel,
+                               filter: result.filter)
             }
-            // Append audio sample buffer into our current sample buffer
-            var readBufferLength = 0
-            var readBufferPointer: UnsafeMutablePointer<Int8>?
-            CMBlockBufferGetDataPointer(readBuffer, atOffset: 0, lengthAtOffsetOut: &readBufferLength, totalLengthOut: nil, dataPointerOut: &readBufferPointer)
-            sampleBuffer.append(UnsafeBufferPointer(start: readBufferPointer, count: readBufferLength))
-            CMSampleBufferInvalidate(readSampleBuffer)
-            
-            let totalSamples = sampleBuffer.count / MemoryLayout<Int16>.size
-            let downSampledLength = totalSamples / samplesPerPixel
-            let samplesToProcess = downSampledLength * samplesPerPixel
-            
-            guard samplesToProcess > 0 else { continue }
-            
-            processSamples(fromData: &sampleBuffer,
-                           sampleMax: &sampleMax,
-                           outputSamples: &outputSamples,
-                           samplesToProcess: samplesToProcess,
-                           downSampledLength: downSampledLength,
-                           samplesPerPixel: samplesPerPixel,
-                           filter: filter)
-            //print("Status: \(reader.status)")
         }
         
-        // Process the remaining samples that did not fit into samplesPerPixel at the end
-        let samplesToProcess = sampleBuffer.count / MemoryLayout<Int16>.size
-        if samplesToProcess > 0 {
-            guard !isCancelled else { return nil }
-            
-            let downSampledLength = 1
-            let samplesPerPixel = samplesToProcess
-            let filter = [Float](repeating: 1.0 / Float(samplesPerPixel), count: samplesPerPixel)
-            
-            processSamples(fromData: &sampleBuffer,
-                           sampleMax: &sampleMax,
-                           outputSamples: &outputSamples,
-                           samplesToProcess: samplesToProcess,
-                           downSampledLength: downSampledLength,
-                           samplesPerPixel: samplesPerPixel,
-                           filter: filter)
-            //print("Status: \(reader.status)")
-        }
-        
-        // if (reader.status == AVAssetReaderStatusFailed || reader.status == AVAssetReaderStatusUnknown)
-        // Something went wrong. Handle it or do not, depending on if you can get above to work
-        if reader.status == .completed || true{
+        if reader.isCompleted {
             return (outputSamples, sampleMax)
         } else {
             print("FDWaveformRenderOperation failed to read audio: \(String(describing: reader.error))")
@@ -245,7 +180,10 @@ final public class FDWaveformRenderOperation: Operation {
     }
     
     // TODO: report progress? (for issue #2)
-    func processSamples(fromData sampleBuffer: inout Data, sampleMax: inout CGFloat, outputSamples: inout [CGFloat], samplesToProcess: Int, downSampledLength: Int, samplesPerPixel: Int, filter: [Float]) {
+    func processSamples(fromData sampleBuffer: inout Data, sampleMax: inout CGFloat,
+                        outputSamples: inout [CGFloat], samplesToProcess: Int,
+                        downSampledLength: Int, samplesPerPixel: Int, filter: [Float]) {
+        
         sampleBuffer.withUnsafeBytes { bytes in
             guard let samples = bytes.bindMemory(to: Int16.self).baseAddress else {
                 return
@@ -325,18 +263,3 @@ final public class FDWaveformRenderOperation: Operation {
         return image
     }
 }
-
-extension AVAssetReader.Status : CustomStringConvertible{
-    public var description: String{
-        switch self{
-        case .reading: return "reading"
-        case .unknown: return "unknown"
-        case .completed: return "completed"
-        case .failed: return "failed"
-        case .cancelled: return "cancelled"
-        @unknown default:
-            fatalError()
-        }
-    }
-}
-

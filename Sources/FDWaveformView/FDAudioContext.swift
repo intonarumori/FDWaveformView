@@ -5,7 +5,7 @@ import UIKit
 import AVFoundation
 
 /// Holds audio information used for building waveforms
-final class FDAudioContext {
+final class FDAudioContext: FDAudioContextProtocol {
     
     /// The audio asset URL used to load the context
     public let audioURL: URL
@@ -60,5 +60,146 @@ final class FDAudioContext {
             completionHandler(nil)
         }
     }
+    
+    func getReader(slice: CountableRange<Int>, targetSamples: Int, format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol? {
+        return try FDAudioContextReader(audioContext: self, slice: slice,
+                                        targetSamples: targetSamples, type: format.type)
+    }
 }
 
+
+// MARK: -
+
+class FDAudioContextReader: FDAudioContextReaderProtocol {
+    
+    private let reader: AVAssetReader
+    private let readerOutput: AVAssetReaderTrackOutput
+
+    private var sampleBuffer = Data()
+
+    private(set) var sampleMax: CGFloat
+    private(set) var samplesPerPixel: Int
+    private(set) var error: Error?
+    private var filter: [Float]
+    
+    // MARK: -
+    
+    deinit {
+        reader.cancelReading()
+    }
+    
+    init(audioContext: FDAudioContext,
+         slice: CountableRange<Int>,
+         targetSamples: Int,
+         type: FDWaveformType) throws {
+        
+        self.reader = try AVAssetReader(asset: audioContext.asset)
+        
+        var channelCount = 1
+        var sampleRate: CMTimeScale = 44100
+        let formatDescriptions = audioContext.assetTrack.formatDescriptions as! [CMAudioFormatDescription]
+        for item in formatDescriptions {
+            guard let fmtDesc = CMAudioFormatDescriptionGetStreamBasicDescription(item) else {
+                throw NSError(domain: "format description error", code: 1000, userInfo: nil)
+            }
+            channelCount = Int(fmtDesc.pointee.mChannelsPerFrame)
+            sampleRate = Int32(fmtDesc.pointee.mSampleRate)
+        }
+        
+        reader.timeRange = CMTimeRange(start: CMTime(value: Int64(slice.lowerBound), timescale: sampleRate),
+                                       duration: CMTime(value: Int64(slice.count), timescale: sampleRate))
+        let outputSettingsDict: [String : Any] = [
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+        
+        let readerOutput = AVAssetReaderTrackOutput(track: audioContext.assetTrack, outputSettings: outputSettingsDict)
+        readerOutput.alwaysCopiesSampleData = false
+        reader.add(readerOutput)
+        self.readerOutput = readerOutput
+        
+        self.sampleMax = type.floorValue
+        self.samplesPerPixel = max(1, channelCount * slice.count / targetSamples)
+        self.filter = [Float](repeating: 1.0 / Float(samplesPerPixel), count: samplesPerPixel)
+        
+        // 16-bit samples
+        reader.startReading()
+    }
+
+    
+    func readNextBatch(sampleBuffer: inout Data) -> FDAudioContextReaderResultProtocol? {
+        guard reader.status == .reading else {
+            return nil
+        }
+        
+        if let readSampleBuffer = readerOutput.copyNextSampleBuffer(),
+            let readBuffer = CMSampleBufferGetDataBuffer(readSampleBuffer) {
+            
+            // Append audio sample buffer into our current sample buffer
+            var readBufferLength = 0
+            var readBufferPointer: UnsafeMutablePointer<Int8>?
+            CMBlockBufferGetDataPointer(readBuffer,
+                                        atOffset: 0,
+                                        lengthAtOffsetOut: &readBufferLength,
+                                        totalLengthOut: nil,
+                                        dataPointerOut: &readBufferPointer)
+            
+            sampleBuffer.append(UnsafeBufferPointer(start: readBufferPointer, count: readBufferLength))
+            CMSampleBufferInvalidate(readSampleBuffer)
+            
+            let totalSamples = sampleBuffer.count / MemoryLayout<Int16>.size
+            let downSampledLength = totalSamples / samplesPerPixel
+            let samplesToProcess = downSampledLength * samplesPerPixel
+
+            return FDAudioContextReaderResult(samplesToProcess: samplesToProcess,
+                                              downSampledLength: downSampledLength,
+                                              filter: filter)
+        } else {
+            
+            // Process the remaining samples that did not fit into samplesPerPixel at the end
+            let samplesToProcess = sampleBuffer.count / MemoryLayout<Int16>.size
+            if samplesToProcess > 0 {
+                
+                let downSampledLength = 1
+                let samplesPerPixel = samplesToProcess
+                let filter = [Float](repeating: 1.0 / Float(samplesPerPixel), count: samplesPerPixel)
+
+                return FDAudioContextReaderResult(samplesToProcess: samplesToProcess,
+                                                  downSampledLength: downSampledLength,
+                                                  filter: filter)
+            } else {
+                return nil
+            }
+        }
+    }
+    
+    var isCompleted: Bool {
+        // if (reader.status == AVAssetReaderStatusFailed || reader.status == AVAssetReaderStatusUnknown)
+        // Something went wrong. Handle it or do not, depending on if you can get above to work
+        return reader.status == .completed || true
+    }
+    
+}
+
+struct FDAudioContextReaderResult: FDAudioContextReaderResultProtocol {
+    var samplesToProcess: Int
+    var downSampledLength: Int
+    var filter: [Float]
+}
+
+extension AVAssetReader.Status : CustomStringConvertible {
+    public var description: String{
+        switch self{
+        case .reading: return "reading"
+        case .unknown: return "unknown"
+        case .completed: return "completed"
+        case .failed: return "failed"
+        case .cancelled: return "cancelled"
+        @unknown default:
+            fatalError()
+        }
+    }
+}
