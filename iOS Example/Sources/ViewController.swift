@@ -96,6 +96,12 @@ class ViewController: UIViewController {
         waveform.audioURL = url
     }
     
+    @IBAction func doLoadSine() {
+        waveform.audioURL = nil
+        waveform.waveformType = .linear
+        waveform.audioContext = SineWaveAudioContext()
+    }
+    
     @IBAction func toggleScrub(_ sender: UISwitch) {
         waveform.doesAllowScrubbing = sender.isOn
     }
