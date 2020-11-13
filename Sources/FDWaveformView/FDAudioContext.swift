@@ -19,14 +19,20 @@ final class FDAudioContext: FDAudioContextProtocol {
     // Loaded assetTrack
     public let assetTrack: AVAssetTrack
     
+    // MARK: -
+    
     private init(audioURL: URL, totalSamples: Int, asset: AVAsset, assetTrack: AVAssetTrack) {
         self.audioURL = audioURL
         self.totalSamples = totalSamples
         self.asset = asset
         self.assetTrack = assetTrack
+        
+        print("FDAudioContext created \(totalSamples)")
     }
     
-    public static func load(fromAudioURL audioURL: URL, completionHandler: @escaping (_ audioContext: FDAudioContext?) -> ()) {
+    public static func load(fromAudioURL audioURL: URL,
+                            completionHandler: @escaping (_ audioContext: FDAudioContext?) -> ()) {
+        
         let asset = AVURLAsset(url: audioURL, options: [AVURLAssetPreferPreciseDurationAndTimingKey: NSNumber(value: true as Bool)])
         
         guard let assetTrack = asset.tracks(withMediaType: AVMediaType.audio).first else {
@@ -61,7 +67,8 @@ final class FDAudioContext: FDAudioContextProtocol {
         }
     }
     
-    func getReader(slice: CountableRange<Int>, targetSamples: Int, format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol? {
+    func getReader(slice: CountableRange<Int>, targetSamples: Int,
+                   format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol {
         return try FDAudioContextReader(audioContext: self, slice: slice,
                                         targetSamples: targetSamples, type: format.type)
     }
@@ -75,11 +82,8 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
     private let reader: AVAssetReader
     private let readerOutput: AVAssetReaderTrackOutput
 
-    private var sampleBuffer = Data()
-
     private(set) var sampleMax: CGFloat
     private(set) var samplesPerPixel: Int
-    private(set) var error: Error?
     private var filter: [Float]
     
     // MARK: -
@@ -97,6 +101,7 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
         
         var channelCount = 1
         var sampleRate: CMTimeScale = 44100
+        
         let formatDescriptions = audioContext.assetTrack.formatDescriptions as! [CMAudioFormatDescription]
         for item in formatDescriptions {
             guard let fmtDesc = CMAudioFormatDescriptionGetStreamBasicDescription(item) else {
@@ -108,15 +113,16 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
         
         reader.timeRange = CMTimeRange(start: CMTime(value: Int64(slice.lowerBound), timescale: sampleRate),
                                        duration: CMTime(value: Int64(slice.count), timescale: sampleRate))
+        
         let outputSettingsDict: [String : Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMBitDepthKey: 32,
             AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsFloatKey: true,
             AVLinearPCMIsNonInterleaved: false
         ]
-        
-        let readerOutput = AVAssetReaderTrackOutput(track: audioContext.assetTrack, outputSettings: outputSettingsDict)
+        let readerOutput = AVAssetReaderTrackOutput(track: audioContext.assetTrack,
+                                                    outputSettings: outputSettingsDict)
         readerOutput.alwaysCopiesSampleData = false
         reader.add(readerOutput)
         self.readerOutput = readerOutput
@@ -130,7 +136,7 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
     }
 
     
-    func readNextBatch(sampleBuffer: inout Data) -> FDAudioContextReaderResultProtocol? {
+    func readNextBatch(sampleBuffer: inout [Float]) -> FDAudioContextReaderResultProtocol? {
         guard reader.status == .reading else {
             return nil
         }
@@ -146,13 +152,20 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
                                         lengthAtOffsetOut: &readBufferLength,
                                         totalLengthOut: nil,
                                         dataPointerOut: &readBufferPointer)
-            
-            sampleBuffer.append(UnsafeBufferPointer(start: readBufferPointer, count: readBufferLength))
+
+            let data = Data(buffer: UnsafeBufferPointer(start: readBufferPointer, count: readBufferLength))
+            let values: [Float] = FDAudioSampler.getValues(from: data)
+            sampleBuffer.append(contentsOf: values)
+
             CMSampleBufferInvalidate(readSampleBuffer)
             
-            let totalSamples = sampleBuffer.count / MemoryLayout<Int16>.size
+            let totalSamples = sampleBuffer.count / MemoryLayout<Float>.size
             let downSampledLength = totalSamples / samplesPerPixel
             let samplesToProcess = downSampledLength * samplesPerPixel
+            
+            if (samplesToProcess != totalSamples) {
+                print("rounding")
+            }
 
             return FDAudioContextReaderResult(samplesToProcess: samplesToProcess,
                                               downSampledLength: downSampledLength,
@@ -160,7 +173,7 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
         } else {
             
             // Process the remaining samples that did not fit into samplesPerPixel at the end
-            let samplesToProcess = sampleBuffer.count / MemoryLayout<Int16>.size
+            let samplesToProcess = sampleBuffer.count / MemoryLayout<Float>.size
             if samplesToProcess > 0 {
                 
                 let downSampledLength = 1
@@ -190,16 +203,16 @@ struct FDAudioContextReaderResult: FDAudioContextReaderResultProtocol {
     var filter: [Float]
 }
 
-extension AVAssetReader.Status : CustomStringConvertible {
-    public var description: String{
-        switch self{
-        case .reading: return "reading"
-        case .unknown: return "unknown"
-        case .completed: return "completed"
-        case .failed: return "failed"
-        case .cancelled: return "cancelled"
-        @unknown default:
-            fatalError()
-        }
-    }
-}
+//extension AVAssetReader.Status : CustomStringConvertible {
+//    public var description: String {
+//        switch self{
+//        case .reading: return "reading"
+//        case .unknown: return "unknown"
+//        case .completed: return "completed"
+//        case .failed: return "failed"
+//        case .cancelled: return "cancelled"
+//        @unknown default:
+//            fatalError()
+//        }
+//    }
+//}

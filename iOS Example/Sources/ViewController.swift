@@ -97,35 +97,33 @@ class ViewController: UIViewController {
     }
     
     @IBAction func doLoadSine() {
+        //let thisBundle = Bundle(for: type(of: self))
+        //let url = thisBundle.url(forResource: "sine", withExtension: "wav")
+        //waveform.audioURL = url
         waveform.audioURL = nil
-        waveform.waveformType = .linear
         waveform.audioContext = SineWaveAudioContext()
     }
     
     @IBAction func toggleScrub(_ sender: UISwitch) {
-        waveform.doesAllowScrubbing = sender.isOn
+        waveform.allowsScrubbing = sender.isOn
     }
     
     @IBAction func toggleStretch(_ sender: UISwitch) {
-        waveform.doesAllowStretch = sender.isOn
+        waveform.allowsStretching = sender.isOn
     }
     
     @IBAction func toggleScroll(_ sender: UISwitch) {
-        waveform.doesAllowScroll = sender.isOn
+        waveform.allowsScrolling = sender.isOn
     }
     
     @IBAction func doLinear() {
-        /* TODO: Make this public and then use it here
         waveform.waveformType = .linear
         updateWaveformTypeButtons()
-         */
     }
     
     @IBAction func doLogarithmic() {
-        /* TODO: Make this public and then use it here
-        waveform.waveformType = .logarithmic
+        waveform.waveformType = .logarithmic(noiseFloor: -50)
         updateWaveformTypeButtons()
-        */
     }
     
     @IBAction func doChangeColors() {
@@ -147,9 +145,9 @@ class ViewController: UIViewController {
         waveform.alpha = 0.0
         waveform.audioURL = url
         waveform.zoomSamples = 0 ..< waveform.totalSamples / 3
-        waveform.doesAllowScrubbing = true
-        waveform.doesAllowStretch = true
-        waveform.doesAllowScroll = true
+        waveform.allowsScrubbing = true
+        waveform.allowsStretching = true
+        waveform.allowsScrolling = true
         updateWaveformTypeButtons()
     }
     

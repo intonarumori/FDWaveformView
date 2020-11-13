@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A526D8992421A2CC0025C765 /* SineWaveAudioContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A526D8982421A2CC0025C765 /* SineWaveAudioContext.swift */; };
+		A5F2D5D0242D6EA900CF27BD /* sine.wav in Resources */ = {isa = PBXBuildFile; fileRef = A5F2D5CF242D6EA900CF27BD /* sine.wav */; };
 		C4D2819B2383FB4F009DD34E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C4D281962383FB4F009DD34E /* Assets.xcassets */; };
 		C4D281B02383FD0A009DD34E /* Submarine.aiff in Resources */ = {isa = PBXBuildFile; fileRef = C4D281AC2383FD0A009DD34E /* Submarine.aiff */; };
 		C4D281B12383FD0A009DD34E /* TchaikovskyExample2.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C4D281AD2383FD0A009DD34E /* TchaikovskyExample2.mp3 */; };
@@ -35,6 +36,7 @@
 
 /* Begin PBXFileReference section */
 		A526D8982421A2CC0025C765 /* SineWaveAudioContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SineWaveAudioContext.swift; sourceTree = "<group>"; };
+		A5F2D5CF242D6EA900CF27BD /* sine.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sine.wav; sourceTree = "<group>"; };
 		C4D281962383FB4F009DD34E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C4D281972383FB4F009DD34E /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C4D281AC2383FD0A009DD34E /* Submarine.aiff */ = {isa = PBXFileReference; lastKnownFileType = audio.aiff; path = Submarine.aiff; sourceTree = "<group>"; };
@@ -70,6 +72,7 @@
 		C4D281AB2383FD0A009DD34E /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				A5F2D5CF242D6EA900CF27BD /* sine.wav */,
 				C4D281AC2383FD0A009DD34E /* Submarine.aiff */,
 				C4D281AD2383FD0A009DD34E /* TchaikovskyExample2.mp3 */,
 				C4D281AE2383FD0A009DD34E /* TchaikovskyExample2.m4a */,
@@ -178,6 +181,7 @@
 				C4D281B92383FD3E009DD34E /* Main.storyboard in Resources */,
 				C4D281B82383FD3E009DD34E /* Launch Screen.storyboard in Resources */,
 				C4D281B02383FD0A009DD34E /* Submarine.aiff in Resources */,
+				A5F2D5D0242D6EA900CF27BD /* sine.wav in Resources */,
 				C4D281B22383FD0A009DD34E /* TchaikovskyExample2.m4a in Resources */,
 				C4D2819B2383FB4F009DD34E /* Assets.xcassets in Resources */,
 				C4D281B32383FD0A009DD34E /* TchaikovskyExample2.ogg in Resources */,

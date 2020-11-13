@@ -8,25 +8,24 @@
 
 import UIKit
 
-public protocol FDAudioContextReaderResultProtocol {
-    var samplesToProcess: Int { get }
-    var downSampledLength: Int { get }
-    var filter: [Float] { get }
+public protocol FDAudioContextProtocol: class {
+
+    var totalSamples: Int { get }
+    func getReader(slice: CountableRange<Int>,
+                   targetSamples: Int,
+                   format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol
 }
 
 public protocol FDAudioContextReaderProtocol: class {
     var sampleMax: CGFloat { get }
     var samplesPerPixel: Int { get }
     var isCompleted: Bool { get }
-    var error: Error? { get }
     
-    func readNextBatch(sampleBuffer: inout Data) -> FDAudioContextReaderResultProtocol?
+    func readNextBatch(sampleBuffer: inout [Float]) -> FDAudioContextReaderResultProtocol?
 }
 
-public protocol FDAudioContextProtocol: class {
-
-    var totalSamples: Int { get }
-    func getReader(slice: CountableRange<Int>,
-                   targetSamples: Int,
-                   format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol?
+public protocol FDAudioContextReaderResultProtocol {
+    var samplesToProcess: Int { get }
+    var downSampledLength: Int { get }
+    var filter: [Float] { get }
 }

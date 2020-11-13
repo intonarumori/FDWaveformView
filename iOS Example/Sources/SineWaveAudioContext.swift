@@ -11,7 +11,7 @@ import FDWaveformView
 
 class SineWaveAudioContext: FDAudioContextProtocol {
     var totalSamples: Int
-    var samples: [Int16]
+    var samples: [Float]
     
     init() {
         // generate sine
@@ -19,15 +19,19 @@ class SineWaveAudioContext: FDAudioContextProtocol {
         
         samples = Array(repeating: 0, count: totalSamples)
         
-        var phase: Float = 0
         for (index, _) in samples.enumerated() {
-            samples[index] = Int16(sin(phase) * 0.5 * Float(Int16.max))
-            phase += 0.001
+            samples[index] = Float(index) / Float(totalSamples)
         }
+        
+//        var phase: Float = 0
+//        for (index, _) in samples.enumerated() {
+//            samples[index] = Float(sin(phase) * 0.5)
+//            phase += 0.001
+//        }
     }
     
     func getReader(slice: CountableRange<Int>, targetSamples: Int,
-                   format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol? {
+                   format: FDWaveformRenderFormat) throws -> FDAudioContextReaderProtocol {
         return SineWaveAudioContextReader(context: self, slice: slice, targetSamples: targetSamples)
     }
 }
@@ -60,7 +64,7 @@ class SineWaveAudioContextReader: FDAudioContextReaderProtocol {
         currentIndex = slice.startIndex
     }
     
-    func readNextBatch(sampleBuffer: inout Data) -> FDAudioContextReaderResultProtocol? {
+    func readNextBatch(sampleBuffer: inout [Float]) -> FDAudioContextReaderResultProtocol? {
         
         guard currentIndex < slice.endIndex else {
             isCompleted = true
@@ -69,21 +73,20 @@ class SineWaveAudioContextReader: FDAudioContextReaderProtocol {
         
         let samples = context.samples
         let startIndex = currentIndex
+        let endIndex = min(slice.endIndex, min(context.samples.count, startIndex + batchSize))
         
-        for i in 0 ..< batchSize {
-            currentIndex = startIndex + i
-            
-            if currentIndex < slice.endIndex {
-                let data = withUnsafeBytes(of: samples[currentIndex]) { Data($0) }
-                sampleBuffer.append(data)
-            } else {
-                break
-            }
-        }
+        let sampleBatch = context.samples[currentIndex..<endIndex]
         
-        let totalSamples = sampleBuffer.count / MemoryLayout<Int16>.size
+        isCompleted = (endIndex == slice.endIndex)
+        
+        currentIndex = endIndex
+        sampleBuffer += sampleBatch
+        
+        let totalSamples = sampleBuffer.count
         let downSampledLength = totalSamples / samplesPerPixel
         let samplesToProcess = downSampledLength * samplesPerPixel
+        
+        print("BATCH: \(currentIndex) downSampledLength:\(downSampledLength) samplesToProcess: \(samplesToProcess)")
         
         return FDSineWaveAudioContextReaderResult(
             samplesToProcess: samplesToProcess,
