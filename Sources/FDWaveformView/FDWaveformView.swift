@@ -432,7 +432,7 @@ open class FDWaveformView: UIView {
         let imageSize = CGSize(width: widthInPixels, height: heightInPixels)
         let renderFormat = FDWaveformRenderFormat(type: waveformRenderType, wavesColor: .black, scale: desiredImageScale)
 
-        print("RENDERING SENT: \(renderSamples) \(imageSize)")
+        //print("RENDERING SENT: \(renderSamples) \(imageSize)")
         
         let waveformRenderOperation = FDWaveformRenderOperation(
             audioContext: audioContext, imageSize: imageSize,

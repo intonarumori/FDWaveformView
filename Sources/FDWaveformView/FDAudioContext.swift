@@ -27,7 +27,7 @@ final class FDAudioContext: FDAudioContextProtocol {
         self.asset = asset
         self.assetTrack = assetTrack
         
-        print("FDAudioContext created \(totalSamples)")
+        //print("FDAudioContext created \(totalSamples)")
     }
     
     public static func load(fromAudioURL audioURL: URL,
@@ -163,10 +163,6 @@ class FDAudioContextReader: FDAudioContextReaderProtocol {
             let downSampledLength = totalSamples / samplesPerPixel
             let samplesToProcess = downSampledLength * samplesPerPixel
             
-            if (samplesToProcess != totalSamples) {
-                print("rounding")
-            }
-
             return FDAudioContextReaderResult(samplesToProcess: samplesToProcess,
                                               downSampledLength: downSampledLength,
                                               filter: filter)

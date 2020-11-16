@@ -31,14 +31,13 @@ class FDAudioSampler {
                                noiseFloor: Float = 0) -> [CGFloat] {
         
         var processingBuffer: [Float] = inputData // getValues(from: inputData)
-        // Remove processed samples
-        //inputData.removeFirst(processingBuffer.count * MemoryLayout<Float>.stride)
         inputData.removeFirst(processingBuffer.count)
 
         convertToAbsoluteValues(&processingBuffer)
         
         if normalize {
-            normalizeValues(&processingBuffer, noiseFloor: noiseFloor)
+            normalizeValues(&processingBuffer)
+            clampValues(&processingBuffer, minimum: noiseFloor, maximum: 0)
         }
         
         //Downsample and average
@@ -51,10 +50,8 @@ class FDAudioSampler {
         return cgSampledData
     }
     
-    static func normalizeValues(_ data: inout [Float], noiseFloor: Float) {
-        
+    static func normalizeValues(_ data: inout [Float]) {
         let count = vDSP_Length(data.count)
-        
         // Convert samples to a log scale
         //var zero: Float = 32768.0 // for Int16 integers
         var zero: Float = 1.0       // the input number representing 0dB on the output
@@ -63,9 +60,12 @@ class FDAudioSampler {
                     &data, 1,       // output vector + stride
                     count,          // number of elements
                     1)              // power = 0, amplitude = 1
-        // Clip to [noiseFloor, 0]
-        var floor: Float = noiseFloor
-        var ceil: Float = 0.0
+    }
+    
+    static func clampValues(_ data: inout [Float], minimum: Float, maximum: Float) {
+        let count = vDSP_Length(data.count)
+        var floor = minimum
+        var ceil = maximum
         vDSP_vclip(data, 1,         // input vector + stride
                    &floor,          // low clipping threshold
                    &ceil,           // high clipping threshold
@@ -90,7 +90,7 @@ class FDAudioSampler {
     
     static func getValues<T: Numeric>(from data: Data) -> [T] {
         
-        let length = data.count / MemoryLayout<T>.stride
+        let length = data.count / MemoryLayout<T>.size
 
         let result = data.withUnsafeBytes { bytes -> [T] in
             var processingBuffer = Array<T>(repeating: 0, count: length)
