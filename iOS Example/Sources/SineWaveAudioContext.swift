@@ -70,8 +70,7 @@ class SineWaveAudioContextReader: FDAudioContextReaderProtocol {
             isCompleted = true
             return nil
         }
-        
-        let samples = context.samples
+
         let startIndex = currentIndex
         let endIndex = min(slice.endIndex, min(context.samples.count, startIndex + batchSize))
         
@@ -86,7 +85,7 @@ class SineWaveAudioContextReader: FDAudioContextReaderProtocol {
         let downSampledLength = totalSamples / samplesPerPixel
         let samplesToProcess = downSampledLength * samplesPerPixel
         
-        print("BATCH: \(currentIndex) downSampledLength:\(downSampledLength) samplesToProcess: \(samplesToProcess)")
+        //print("BATCH: \(currentIndex) downSampledLength:\(downSampledLength) samplesToProcess: \(samplesToProcess)")
         
         return FDSineWaveAudioContextReaderResult(
             samplesToProcess: samplesToProcess,
