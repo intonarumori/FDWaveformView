@@ -15,6 +15,10 @@ A view for rendering audio waveforms.
 @IBDesignable
 open class FDWaveformView: UIView {
     
+    public var plotter: FDWaveformPlotter = FDWaveformLinePlotter() {
+        didSet { setNeedsDisplay() }
+    }
+    
     /// A delegate to accept progress reporting
     open weak var delegate: FDWaveformViewDelegate?
 
@@ -431,11 +435,11 @@ open class FDWaveformView: UIView {
         let heightInPixels = frame.height * CGFloat(horizontalOverdrawTarget)
         let imageSize = CGSize(width: widthInPixels, height: heightInPixels)
         let renderFormat = FDWaveformRenderFormat(type: waveformRenderType, wavesColor: .black, scale: desiredImageScale)
-
-        //print("RENDERING SENT: \(renderSamples) \(imageSize)")
+        
+        print("RENDERING SENT: samples:\(renderSamples) imagesize:\(imageSize) bounds:\(bounds)")
         
         let waveformRenderOperation = FDWaveformRenderOperation(
-            audioContext: audioContext, imageSize: imageSize,
+            audioContext: audioContext, plotter: plotter, imageSize: imageSize,
             sampleRange: renderSamples, format: renderFormat) { [weak self] image in
             
             DispatchQueue.main.async {

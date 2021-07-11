@@ -30,7 +30,10 @@ final public class FDWaveformRenderOperation: Operation {
     
     /// The audio context used to build the waveform
     public let audioContext: FDAudioContextProtocol
-    
+
+    /// The audio context used to build the waveform
+    public let plotter: FDWaveformPlotter
+
     /// Size of waveform image to render
     public let imageSize: CGSize
     
@@ -60,12 +63,15 @@ final public class FDWaveformRenderOperation: Operation {
     
     // MARK: -
     
-    init(audioContext: FDAudioContextProtocol, imageSize: CGSize,
+    init(audioContext: FDAudioContextProtocol,
+         plotter: FDWaveformPlotter,
+         imageSize: CGSize,
          sampleRange: CountableRange<Int>? = nil,
          format: FDWaveformRenderFormat? = nil,
          completionHandler: @escaping (_ image: UIImage?) -> ()) {
         
         self.audioContext = audioContext
+        self.plotter = plotter
         self.imageSize = imageSize
         self.sampleRange = sampleRange ?? 0..<audioContext.totalSamples
         self.format = format ?? FDWaveformRenderFormat(type: .linear, wavesColor: .blue, scale: 1)
@@ -143,7 +149,7 @@ final public class FDWaveformRenderOperation: Operation {
             let imageSize = CGSize(width: CGFloat(samples.count) / format.scale,
                                    height: self.imageSize.height)
 
-            image = try FDWaveformPlotter.plotWaveformGraph(
+            image = try plotter.plotWaveformGraph(
                 samples,
                 maximumValue: sampleMax,
                 minimumValue: format.type.floorValue,

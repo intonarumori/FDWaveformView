@@ -36,6 +36,7 @@
 
 /* Begin PBXFileReference section */
 		A526D8982421A2CC0025C765 /* SineWaveAudioContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SineWaveAudioContext.swift; sourceTree = "<group>"; };
+		A53D26442563E7B0006B9123 /* BridgingHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgingHeader.h; sourceTree = "<group>"; };
 		A5F2D5CF242D6EA900CF27BD /* sine.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = sine.wav; sourceTree = "<group>"; };
 		C4D281962383FB4F009DD34E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C4D281972383FB4F009DD34E /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -109,6 +110,7 @@
 				C4D281962383FB4F009DD34E /* Assets.xcassets */,
 				C4D281972383FB4F009DD34E /* Info.plist */,
 				C4D281AB2383FD0A009DD34E /* Resources */,
+				A53D26442563E7B0006B9123 /* BridgingHeader.h */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -357,6 +359,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "net.phor.FDWaveformView.FDWaveformView-iOS";
 				PRODUCT_NAME = "iOS Example";
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/BridgingHeader.h;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -376,6 +379,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "net.phor.FDWaveformView.FDWaveformView-iOS";
 				PRODUCT_NAME = "iOS Example";
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/BridgingHeader.h;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

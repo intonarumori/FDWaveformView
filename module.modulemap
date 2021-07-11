@@ -1,0 +1,5 @@
+module FDWaveformView {
+    header "Sources/VertexTypes.h"
+    link "FDWaveformView"
+    export *
+}
